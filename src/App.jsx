@@ -88,7 +88,7 @@ function HomePage() {
           <div className="hero-copy reveal">
             <span className="eyebrow"><Sparkles size={15} /> Progress begins with a clear plan</span>
             <h1>Grow with clarity.<br/><em>Invest with confidence.</em></h1>
-            <p>Thoughtful guidance across shares, mutual funds, currencies and other investments—built around your goals and backed by trusted personal service in Salem.</p>
+            <p>Thoughtful guidance across shares, mutual funds, currencies and other investments—built around your goals and backed by trusted personal service across India.</p>
             <div className="hero-actions"><WhatsAppLink className="button button-gold">Start a conversation <MessageCircle size={18} /></WhatsAppLink><Link to="/services" className="text-link">Explore our services <ChevronRight size={17}/></Link></div>
             <div className="trust-row"><div className="avatar-stack"><span>AS</span><span>₹</span><span>+</span></div><p><strong>Personal, practical guidance</strong><small>For every stage of your wealth journey</small></p></div>
           </div>
