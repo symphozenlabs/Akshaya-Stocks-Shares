@@ -5,6 +5,7 @@ import {
   CloudUpload, Download, Edit3, Eye, FileSpreadsheet, Gift, HandCoins, Home, Landmark, LayoutDashboard,
   LockKeyhole, LogIn, LogOut, Mail, Menu, Moon, MoreHorizontal, Phone, PieChart, Plus, Printer,
   Search, Settings, ShieldCheck, Sparkles, Sun, TrendingUp, Upload, UserPlus, Users, WalletCards, X,
+  MessageCircle, Send,
 } from 'lucide-react'
 import Papa from 'papaparse'
 import {
@@ -19,8 +20,13 @@ import { csvRowToCustomer, dobToIso, filterCustomers, PRODUCTS, rowsToCsv, today
 
 const ADMIN_EMAIL = 'akshayastocksshares@gmail.com'
 const FILTERS = ['All', 'Shares', 'Mutual Funds', 'Forex', 'Others']
+const WHATSAPP_URL = 'https://wa.me/919842744955?text=Hello%20Akshaya%20Stocks%20%26%20Shares%2C%20I%20would%20like%20to%20start%20a%20conversation%20about%20my%20investment%20needs.'
 
 const cx = (...items) => items.filter(Boolean).join(' ')
+
+function WhatsAppLink({ className, children }) {
+  return <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className={className}>{children}</a>
+}
 
 function Logo({ inverse = false }) {
   return (
@@ -83,7 +89,7 @@ function HomePage() {
             <span className="eyebrow"><Sparkles size={15} /> Progress begins with a clear plan</span>
             <h1>Grow with clarity.<br/><em>Invest with confidence.</em></h1>
             <p>Thoughtful guidance across shares, mutual funds, currencies and other investments—built around your goals and backed by trusted personal service in Salem.</p>
-            <div className="hero-actions"><Link to="/contact" className="button button-gold">Start a conversation <ArrowRight size={18} /></Link><Link to="/services" className="text-link">Explore our services <ChevronRight size={17}/></Link></div>
+            <div className="hero-actions"><WhatsAppLink className="button button-gold">Start a conversation <MessageCircle size={18} /></WhatsAppLink><Link to="/services" className="text-link">Explore our services <ChevronRight size={17}/></Link></div>
             <div className="trust-row"><div className="avatar-stack"><span>AS</span><span>₹</span><span>+</span></div><p><strong>Personal, practical guidance</strong><small>For every stage of your wealth journey</small></p></div>
           </div>
           <MoneyScene />
@@ -101,7 +107,7 @@ function HomePage() {
             [Landmark, 'Other investments', 'Explore suitable avenues without losing sight of your goals.'],
           ].map(([Icon, title, copy], i) => <article key={title} className="service-card"><span className="card-number">0{i + 1}</span><Icon/><h3>{title}</h3><p>{copy}</p></article>)}
         </section>
-        <section className="cta-band"><div className="shell"><div><span className="eyebrow light">A brighter financial chapter</span><h2>Let your money move with purpose.</h2></div><Link to="/contact" className="button button-light">Talk to us <ArrowRight size={18}/></Link></div></section>
+        <section className="cta-band"><div className="shell"><div><span className="eyebrow light">A brighter financial chapter</span><h2>Let your money move with purpose.</h2></div><WhatsAppLink className="button button-light">Talk to us on WhatsApp <MessageCircle size={18}/></WhatsAppLink></div></section>
       </main>
       <PublicFooter />
     </div>
@@ -109,7 +115,7 @@ function HomePage() {
 }
 
 function PublicFooter() {
-  return <footer className="public-footer"><div className="shell"><Logo inverse/><p>1/31-A, First Floor, Anna Salai, Swarnapuri, Salem – 636004</p><div><Link to="/services">Services</Link><Link to="/contact">Contact</Link><Link to="/login">CRM Login</Link></div><small>© {new Date().getFullYear()} Akshaya Stocks & Shares. Investments are subject to market risks.</small></div></footer>
+  return <footer className="public-footer"><div className="shell"><Logo inverse/><p>1/31-A, First Floor, Anna Salai, Swarnapuri, Salem – 636004</p><div><Link to="/services">Services</Link><Link to="/contact">Contact</Link><Link to="/login">CRM Login</Link></div><small><span>© {new Date().getFullYear()} Akshaya Stocks & Shares. Investments are subject to market risks.</span><span>Developed and maintained by <a href="https://www.symphozen.com" target="_blank" rel="noopener noreferrer">Symphozen Labs</a></span></small></div></footer>
 }
 
 const pageContent = {
@@ -119,11 +125,76 @@ const pageContent = {
 
 function ContentPage({ type }) {
   const data = pageContent[type]
-  return <div className="public-page"><PublicHeader/><main><section className="inner-hero"><div className="shell"><span className="eyebrow">{data.eyebrow}</span><h1>{data.title}</h1><p>{data.intro}</p></div></section><section className="section shell editorial-grid">{data.cards.map(([t,c],i)=><article key={t}><span>0{i+1}</span><h2>{t}</h2><p>{c}</p></article>)}</section><section className="section shell quote-block"><HandCoins/><blockquote>“Positive progress starts when good information meets a clear purpose.”</blockquote><Link to="/contact" className="button button-gold">Start a conversation</Link></section></main><PublicFooter/></div>
+  return <div className="public-page"><PublicHeader/><main><section className="inner-hero"><div className="shell"><span className="eyebrow">{data.eyebrow}</span><h1>{data.title}</h1><p>{data.intro}</p></div></section><section className="section shell editorial-grid">{data.cards.map(([t,c],i)=><article key={t}><span>0{i+1}</span><h2>{t}</h2><p>{c}</p></article>)}</section><section className="section shell quote-block"><HandCoins/><blockquote>“Positive progress starts when good information meets a clear purpose.”</blockquote><WhatsAppLink className="button button-gold">Start a conversation <MessageCircle size={18}/></WhatsAppLink></section></main><PublicFooter/></div>
 }
 
 function ContactPage() {
-  return <div className="public-page"><PublicHeader/><main><section className="inner-hero compact-hero"><div className="shell"><span className="eyebrow">Let’s talk</span><h1>Your next financial step can start with a simple conversation.</h1></div></section><section className="section shell contact-grid"><div className="contact-card"><Phone/><span>Call us</span><strong>+91 98427 44955</strong><strong>0427 2336881</strong></div><div className="contact-card"><Mail/><span>Email</span><strong>akshayastocksshares@gmail.com</strong></div><div className="contact-card wide"><Landmark/><span>Visit</span><strong>1/31-A, First Floor, Anna Salai, Swarnapuri, Salem – 636004</strong><p>Opposite the PF Office · Open from 10:00 AM on working days</p></div></section></main><PublicFooter/></div>
+  const [form, setForm] = useState({ name: '', phone: '', email: '', city: '', reason: '', website: '' })
+  const [status, setStatus] = useState({ state: 'idle', message: '' })
+  const update = (e) => setForm((current) => ({ ...current, [e.target.name]: e.target.value }))
+  const submit = async (e) => {
+    e.preventDefault()
+    if (form.website) return
+    setStatus({ state: 'sending', message: '' })
+    try {
+      const response = await fetch('https://formsubmit.co/ajax/akshayastocksshares@gmail.com', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          Name: form.name,
+          'Phone Number': form.phone,
+          Email: form.email,
+          City: form.city,
+          'Reason for connecting': form.reason,
+          _subject: `New website enquiry from ${form.name}`,
+          _template: 'table',
+          _honey: form.website,
+        }),
+      })
+      if (!response.ok) throw new Error('Submission failed')
+      setForm({ name: '', phone: '', email: '', city: '', reason: '', website: '' })
+      setStatus({ state: 'success', message: 'Thank you. Your enquiry has been sent to Akshaya Stocks & Shares.' })
+    } catch {
+      setStatus({ state: 'error', message: 'We could not send your enquiry. Please WhatsApp or call us instead.' })
+    }
+  }
+  return (
+    <div className="public-page">
+      <PublicHeader/>
+      <main>
+        <section className="inner-hero compact-hero">
+          <div className="shell"><span className="eyebrow">Let’s talk</span><h1>Your next financial step can start with a simple conversation.</h1></div>
+        </section>
+        <section className="section shell contact-layout">
+          <div className="contact-grid">
+            <div className="contact-card">
+              <Phone/><span>Call or WhatsApp</span>
+              <WhatsAppLink className="contact-number">+91 98427 44955 <MessageCircle size={18}/></WhatsAppLink>
+              <a className="contact-number secondary" href="tel:+914272336881">0427 2336881</a>
+            </div>
+            <div className="contact-card"><Mail/><span>Email</span><strong>akshayastocksshares@gmail.com</strong></div>
+            <div className="contact-card wide"><Landmark/><span>Visit</span><strong>1/31-A, First Floor, Anna Salai, Swarnapuri, Salem – 636004</strong><p>Opposite the PF Office · Open from 10:00 AM on working days</p></div>
+            <WhatsAppLink className="button button-dark whatsapp-contact"><MessageCircle size={19}/> Chat with us on WhatsApp</WhatsAppLink>
+          </div>
+          <form className="enquiry-form" onSubmit={submit}>
+            <span className="eyebrow">Send an enquiry</span><h2>How can we help?</h2><p>Share a few details and our team will get in touch with you.</p>
+            <div className="enquiry-fields">
+              <label>Name <b>*</b><input name="name" value={form.name} onChange={update} required autoComplete="name"/></label>
+              <label>Phone No <b>*</b><input name="phone" value={form.phone} onChange={update} required inputMode="tel" autoComplete="tel" pattern="[0-9+ ()-]{7,20}"/></label>
+              <label>Email ID <b>*</b><input name="email" value={form.email} onChange={update} required type="email" autoComplete="email"/></label>
+              <label>City <b>*</b><input name="city" value={form.city} onChange={update} required autoComplete="address-level2"/></label>
+              <label className="full-field">Reason for connecting <b>*</b><textarea name="reason" value={form.reason} onChange={update} required rows="5" placeholder="Tell us what you would like to discuss…"/></label>
+              <input type="text" name="website" value={form.website} onChange={update} tabIndex="-1" autoComplete="off" hidden aria-hidden="true"/>
+            </div>
+            {status.message&&<div role="status" className={cx('form-message',status.state==='success'&&'success')}>{status.message}</div>}
+            <button className="button button-gold full" disabled={status.state==='sending'}>{status.state==='sending'?'Sending…':<>Submit enquiry <Send size={18}/></>}</button>
+            <small>Your details are used only to respond to this enquiry and are delivered to the Akshaya Stocks & Shares email inbox.</small>
+          </form>
+        </section>
+      </main>
+      <PublicFooter/>
+    </div>
+  )
 }
 
 function LoginPage({ user }) {
