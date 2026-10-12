@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.vercel/
+.firebase/
+firebase-debug.log*
+*.local
+.DS_Store
+firestore-analysis.md

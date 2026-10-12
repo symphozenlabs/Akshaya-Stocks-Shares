@@ -1,0 +1,13 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "auth": {
+    "authorizedDomains": ["localhost", "akshayass-crm.firebaseapp.com", "akshayass-crm.web.app"],
+    "providers": {
+      "anonymous": false,
+      "emailPassword": true
+    }
+  }
+}

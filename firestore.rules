@@ -1,0 +1,125 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // customers/{customerId}
+    //   name, nameLower: string (required, max 120)
+    //   phone: string (required, international/local digits)
+    //   email: string (optional represented as empty string, max 254)
+    //   pan: string (required for Shares and Mutual Funds, otherwise optional)
+    //   tradingCode, referredBy: string (optional, bounded)
+    //   product: enum string (required)
+    //   dob: timestamp (required)
+    //   archived: bool, archivedAt: timestamp|null
+    //   createdAt, updatedAt: timestamp
+    //   createdBy, updatedBy: authenticated UID
+    // users/{uid}
+    //   mustChangePassword, changeDeferred: bool
+    //   onboardingCreatedAt, lastUpdatedAt: timestamp
+    // ===============================================================
+
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'akshayastocksshares@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+
+    function validEmail(value) {
+      return value is string
+        && value.size() <= 254
+        && (value == '' || value.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'));
+    }
+
+    function validPan(data) {
+      return data.pan is string
+        && data.pan.size() <= 10
+        && (
+          ((data.product == 'Shares' || data.product == 'Mutual Funds')
+            && data.pan.matches('^[A-Z]{5}[0-9]{4}[A-Z]$'))
+          || ((data.product == 'Forex / Dollar' || data.product == 'Other Investments')
+            && (data.pan == '' || data.pan.matches('^[A-Z]{5}[0-9]{4}[A-Z]$')))
+        );
+    }
+
+    function validCustomer(data) {
+      return data.keys().hasOnly([
+          'name', 'nameLower', 'phone', 'email', 'pan', 'tradingCode',
+          'referredBy', 'product', 'dob', 'archived', 'archivedAt',
+          'createdAt', 'createdBy', 'updatedAt', 'updatedBy'
+        ])
+        && data.keys().hasAll([
+          'name', 'nameLower', 'phone', 'email', 'pan', 'tradingCode',
+          'referredBy', 'product', 'dob', 'archived', 'archivedAt',
+          'createdAt', 'createdBy', 'updatedAt', 'updatedBy'
+        ])
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 120
+        && data.nameLower is string && data.nameLower.size() >= 2 && data.nameLower.size() <= 120
+        && data.phone is string && data.phone.matches('^\\+?[0-9]{7,15}$')
+        && validEmail(data.email)
+        && validPan(data)
+        && data.tradingCode is string && data.tradingCode.size() <= 60
+        && data.referredBy is string && data.referredBy.size() <= 120
+        && data.product in ['Shares', 'Mutual Funds', 'Forex / Dollar', 'Other Investments']
+        && data.dob is timestamp && data.dob < request.time
+        && data.archived is bool
+        && ((!data.archived && data.archivedAt == null)
+          || (data.archived && data.archivedAt is timestamp))
+        && data.createdAt is timestamp && data.updatedAt is timestamp
+        && data.createdBy is string && data.updatedBy is string
+        && data.createdBy.size() <= 128 && data.updatedBy.size() <= 128;
+    }
+
+    function validUserPreferences(data) {
+      return data.keys().hasOnly([
+          'mustChangePassword', 'changeDeferred', 'onboardingCreatedAt', 'lastUpdatedAt'
+        ])
+        && data.keys().hasAll([
+          'mustChangePassword', 'changeDeferred', 'onboardingCreatedAt', 'lastUpdatedAt'
+        ])
+        && data.mustChangePassword is bool
+        && data.changeDeferred is bool
+        && data.onboardingCreatedAt is timestamp
+        && data.lastUpdatedAt is timestamp;
+    }
+
+    match /customers/{customerId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && validCustomer(request.resource.data)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.archived == false
+        && request.resource.data.archivedAt == null
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if isAdmin()
+        && validCustomer(request.resource.data)
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if isAdmin() && request.auth.uid == uid;
+      allow create: if isAdmin()
+        && request.auth.uid == uid
+        && validUserPreferences(request.resource.data)
+        && request.resource.data.onboardingCreatedAt == request.time
+        && request.resource.data.lastUpdatedAt == request.time;
+      allow update: if isAdmin()
+        && request.auth.uid == uid
+        && validUserPreferences(request.resource.data)
+        && request.resource.data.onboardingCreatedAt == resource.data.onboardingCreatedAt
+        && request.resource.data.lastUpdatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
