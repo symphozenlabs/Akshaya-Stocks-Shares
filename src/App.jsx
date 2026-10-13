@@ -4,7 +4,7 @@ import {
   Archive, ArrowRight, Bell, BriefcaseBusiness, CalendarDays, Check, ChevronRight, CircleDollarSign,
   CloudUpload, Download, Edit3, Eye, FileSpreadsheet, Gift, HandCoins, Home, Landmark, LayoutDashboard,
   LockKeyhole, LogIn, LogOut, Mail, Menu, Moon, MoreHorizontal, Phone, PieChart, Plus, Printer,
-  Search, Settings, ShieldCheck, Sparkles, Sun, TrendingUp, Upload, UserPlus, Users, WalletCards, X,
+  RotateCcw, Search, Settings, ShieldCheck, Sparkles, Sun, TrendingUp, Upload, UserPlus, Users, WalletCards, X,
   MessageCircle, Send,
 } from 'lucide-react'
 import Papa from 'papaparse'
@@ -14,7 +14,7 @@ import {
   updatePassword, verifyPasswordResetCode, confirmPasswordReset,
 } from 'firebase/auth'
 import {
-  addDoc, collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, Timestamp, updateDoc,
+  addDoc, collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, Timestamp, updateDoc, writeBatch,
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import { csvRowToCustomer, dobToIso, filterCustomers, PRODUCTS, rowsToCsv, todaysBirthdays, validateCustomer } from './lib'
@@ -289,17 +289,35 @@ function DashboardPage() {
 function EmptyCustomers({ archived }) { return <div className="empty-state"><span><Users/></span><h3>{archived?'No archived customers':'No customers yet'}</h3><p>{archived?'Archived customer records will remain safely stored here.':'Add your first customer or import an existing list to get started.'}</p>{!archived&&<Link to="/app/customers/new" className="button button-gold"><Plus/> Add first customer</Link>}</div> }
 
 function CustomersPage({ archived = false }) {
-  const { customers } = useOutletContext()
+  const { customers, user } = useOutletContext()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
   const [selected, setSelected] = useState(new Set())
   const [preview, setPreview] = useState(false)
+  const [bulkAction, setBulkAction] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState({ text: '', success: true })
   const visible = useMemo(()=>filterCustomers(customers,search,filter,archived),[customers,search,filter,archived])
-  useEffect(()=>setSelected(new Set()),[search,filter,archived])
+  useEffect(()=>{setSelected(new Set());setMessage({text:'',success:true})},[search,filter,archived])
   const toggleAll=()=>setSelected(selected.size===visible.length?new Set():new Set(visible.map(c=>c.id)))
   const chosen=visible.filter(c=>selected.has(c.id))
-  const restore=async(c)=>updateDoc(doc(db,'customers',c.id),{archived:false,archivedAt:null,updatedAt:serverTimestamp()})
-  return <><PageTitle eyebrow={archived?'Protected records':'Simple CRM'} title={archived?'Customer archive':'Customer details'} copy={archived?'Records are retained here and can be restored at any time.':'Search, filter, update, export or prepare customer details for print.'} action={!archived&&<Link to="/app/customers/new" className="button button-gold"><Plus/> Add customer</Link>}/><div className="customer-toolbar"><label className="search-box"><Search/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, phone, PAN or email…"/><kbd>⌘ K</kbd></label><div className="filter-tabs">{FILTERS.map(f=><button key={f} className={filter===f?'active':''} onClick={()=>setFilter(f)}>{f}</button>)}</div></div>{visible.length?<div className="table-panel"><div className="selection-bar"><label><input type="checkbox" checked={visible.length>0&&selected.size===visible.length} onChange={toggleAll}/><span>{selected.size?`${selected.size} selected`:'Select visible customers'}</span></label>{selected.size>0&&<div><button onClick={()=>setPreview(true)}><Eye/> Print preview</button></div>}<span>{visible.length} {visible.length===1?'customer':'customers'}</span></div><div className="responsive-table"><table><thead><tr><th className="check-col"></th><th>Name</th><th>Phone</th><th>Email</th><th>PAN</th><th>Product</th><th>Referred by</th><th></th></tr></thead><tbody>{visible.map(c=><tr key={c.id}><td><input type="checkbox" checked={selected.has(c.id)} onChange={()=>setSelected(prev=>{const n=new Set(prev);n.has(c.id)?n.delete(c.id):n.add(c.id);return n})}/></td><td data-label="Name"><div className="customer-name"><span>{c.name.charAt(0).toUpperCase()}</span><strong>{c.name}</strong></div></td><td data-label="Phone">{c.phone}</td><td data-label="Email">{c.email||'—'}</td><td data-label="PAN"><code>{c.pan||'—'}</code></td><td data-label="Product"><span className={`product-pill p-${PRODUCTS.indexOf(c.product)}`}>{c.product}</span></td><td data-label="Referred by">{c.referredBy||'—'}</td><td className="row-actions">{archived?<button onClick={()=>restore(c)} title="Restore customer"><Archive size={17}/> Restore</button>:<Link to={`/app/customers/${c.id}/edit`}><Edit3 size={17}/> Edit</Link>}</td></tr>)}</tbody></table></div></div>:<EmptyCustomers archived={archived}/>} {preview&&<PrintPreview customers={chosen} onClose={()=>setPreview(false)}/>}</>
+  const restore=async(c)=>updateDoc(doc(db,'customers',c.id),{archived:false,archivedAt:null,updatedAt:serverTimestamp(),updatedBy:user.uid})
+  const updateSelected=async(nextArchived)=>{
+    const ids=[...selected]
+    setBusy(true);setMessage({text:'',success:true})
+    try{
+      for(let index=0;index<ids.length;index+=450){
+        const batch=writeBatch(db)
+        ids.slice(index,index+450).forEach(id=>batch.update(doc(db,'customers',id),{archived:nextArchived,archivedAt:nextArchived?serverTimestamp():null,updatedAt:serverTimestamp(),updatedBy:user.uid}))
+        await batch.commit()
+      }
+      setSelected(new Set());setBulkAction('')
+      setMessage({text:`${ids.length} ${ids.length===1?'customer':'customers'} ${nextArchived?'archived':'restored'} successfully.`,success:true})
+    }catch{
+      setMessage({text:`We could not ${nextArchived?'archive':'restore'} the selected customers. Please try again.`,success:false})
+    }finally{setBusy(false)}
+  }
+  return <><PageTitle eyebrow={archived?'Protected records':'Simple CRM'} title={archived?'Customer archive':'Customer details'} copy={archived?'Records are retained here and can be restored at any time.':'Search, filter, update, export or prepare customer details for print.'} action={!archived&&<Link to="/app/customers/new" className="button button-gold"><Plus/> Add customer</Link>}/><div className="customer-toolbar"><label className="search-box"><Search/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, phone, PAN or email…"/><kbd>⌘ K</kbd></label><div className="filter-tabs">{FILTERS.map(f=><button key={f} className={filter===f?'active':''} onClick={()=>setFilter(f)}>{f}</button>)}</div></div>{message.text&&<div role="status" className={cx('form-message',message.success&&'success','bulk-message')}>{message.text}</div>}{visible.length?<div className="table-panel"><div className="selection-bar"><label><input type="checkbox" checked={visible.length>0&&selected.size===visible.length} onChange={toggleAll}/><span>{selected.size?`${selected.size} selected`:'Select visible customers'}</span></label>{selected.size>0&&<div className="selection-actions"><button onClick={()=>setPreview(true)}><Eye/> Print preview</button>{archived?<button className="bulk-restore" onClick={()=>setBulkAction('restore')}><RotateCcw/> Restore selected</button>:<button className="bulk-archive" onClick={()=>setBulkAction('archive')}><Archive/> Archive selected</button>}</div>}<span>{visible.length} {visible.length===1?'customer':'customers'}</span></div><div className="responsive-table"><table><thead><tr><th className="check-col"></th><th>Name</th><th>Phone</th><th>Email</th><th>PAN</th><th>Product</th><th>Referred by</th><th></th></tr></thead><tbody>{visible.map(c=><tr key={c.id}><td><input type="checkbox" aria-label={`Select ${c.name}`} checked={selected.has(c.id)} onChange={()=>setSelected(prev=>{const n=new Set(prev);n.has(c.id)?n.delete(c.id):n.add(c.id);return n})}/></td><td data-label="Name"><div className="customer-name"><span>{c.name.charAt(0).toUpperCase()}</span><strong>{c.name}</strong></div></td><td data-label="Phone">{c.phone}</td><td data-label="Email">{c.email||'—'}</td><td data-label="PAN"><code>{c.pan||'—'}</code></td><td data-label="Product"><span className={`product-pill p-${PRODUCTS.indexOf(c.product)}`}>{c.product}</span></td><td data-label="Referred by">{c.referredBy||'—'}</td><td className="row-actions">{archived?<button onClick={()=>restore(c)} title="Restore customer"><RotateCcw size={17}/> Restore</button>:<Link to={`/app/customers/${c.id}/edit`}><Edit3 size={17}/> Edit</Link>}</td></tr>)}</tbody></table></div></div>:<EmptyCustomers archived={archived}/>} {preview&&<PrintPreview customers={chosen} onClose={()=>setPreview(false)}/>} {bulkAction&&<ConfirmModal title={`${bulkAction==='archive'?'Archive':'Restore'} ${selected.size} ${selected.size===1?'customer':'customers'}?`} copy={bulkAction==='archive'?'The selected records will remain securely stored and can be restored from the archive at any time.':'The selected records will return to the active customer list.'} confirm={busy?'Please wait…':`${bulkAction==='archive'?'Archive':'Restore'} selected`} dangerous={bulkAction==='archive'} busy={busy} onCancel={()=>setBulkAction('')} onConfirm={()=>updateSelected(bulkAction==='archive')}/>}</>
 }
 
 const emptyCustomer = { name:'', phone:'', email:'', pan:'', tradingCode:'', referredBy:'', product:'', dob:'' }
@@ -318,7 +336,7 @@ function CustomerFormPage() {
 
 function Field({label,hint,required,error,children}) { return <label className={cx('field',error&&'has-error')}><span>{label}{required&&<b>*</b>}{hint&&<em>{hint}</em>}</span>{children}{error&&<small>{error}</small>}</label> }
 
-function ConfirmModal({title,copy,confirm,onCancel,onConfirm}) { return <div className="modal-backdrop"><div className="confirm-modal"><span className="modal-icon"><Archive/></span><h2>{title}</h2><p>{copy}</p><div><button className="button button-ghost" onClick={onCancel}>Cancel</button><button className="button button-danger" onClick={onConfirm}>{confirm}</button></div></div></div> }
+function ConfirmModal({title,copy,confirm,onCancel,onConfirm,dangerous=true,busy=false}) { return <div className="modal-backdrop"><div className="confirm-modal"><span className="modal-icon">{dangerous?<Archive/>:<RotateCcw/>}</span><h2>{title}</h2><p>{copy}</p><div><button className="button button-ghost" disabled={busy} onClick={onCancel}>Cancel</button><button className={cx('button',dangerous?'button-danger':'button-dark')} disabled={busy} onClick={onConfirm}>{confirm}</button></div></div></div> }
 
 function PrintPreview({customers,onClose}) {
   const pages=[]; for(let i=0;i<customers.length;i+=8)pages.push(customers.slice(i,i+8))
