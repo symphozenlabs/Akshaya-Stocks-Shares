@@ -1,4 +1,5 @@
-export const PRODUCTS = ['Shares', 'Mutual Funds', 'Forex / Dollar', 'Other Investments']
+export const PRODUCTS = ['Shares', 'Mutual Funds', 'Forex / Dollar', 'Other Investments', 'Cibil']
+export const CIBIL_TYPES = ['Cibil', 'CRIF', 'Experian', 'Equifax']
 
 export function dobToIso(value) {
   if (!value) return ''
@@ -21,7 +22,13 @@ export function normalizeCustomer(input) {
     pan: String(input.pan || '').trim().toUpperCase(),
     tradingCode: String(input.tradingCode || '').trim().toUpperCase(),
     referredBy: String(input.referredBy || '').trim(),
+    aadhaar: String(input.aadhaar || '').replace(/\D/g, ''),
+    address: String(input.address || '').trim(),
+    pincode: String(input.pincode || '').replace(/\D/g, ''),
+    voterId: String(input.voterId || '').trim().toUpperCase(),
+    rationCardNo: String(input.rationCardNo || '').trim().toUpperCase(),
     product,
+    cibilType: product === 'Cibil' ? String(input.cibilType || '').trim() : '',
     dob: String(input.dob || '').trim(),
   }
 }
@@ -32,7 +39,13 @@ export function validateCustomer(input) {
   if (c.name.length < 2) errors.name = 'Enter the customer’s full name.'
   if (!/^\+?[0-9]{7,15}$/.test(c.phone)) errors.phone = 'Enter a valid phone number.'
   if (c.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) errors.email = 'Enter a valid email address.'
+  if (!/^\d{12}$/.test(c.aadhaar)) errors.aadhaar = 'Enter a valid 12-digit Aadhaar number.'
+  if (c.address.length < 5) errors.address = 'Enter the customer’s complete address.'
+  if (!/^[1-9][0-9]{5}$/.test(c.pincode)) errors.pincode = 'Enter a valid 6-digit Indian pincode.'
+  if (!/^[A-Z0-9/-]{6,20}$/.test(c.voterId)) errors.voterId = 'Enter a valid voter ID number.'
+  if (!/^[A-Z0-9 /-]{3,30}$/.test(c.rationCardNo)) errors.rationCardNo = 'Enter a valid ration card number.'
   if (!PRODUCTS.includes(c.product)) errors.product = 'Select an investment product.'
+  if (c.product === 'Cibil' && !CIBIL_TYPES.includes(c.cibilType)) errors.cibilType = 'Select a CIBIL type.'
   if (!/^\d{4}-\d{2}-\d{2}$/.test(c.dob)) errors.dob = 'Date of birth is required.'
   const needsPan = c.product === 'Shares' || c.product === 'Mutual Funds'
   if (needsPan && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(c.pan)) errors.pan = 'A valid PAN is required for shares and mutual funds.'
@@ -48,6 +61,7 @@ export function filterCustomers(customers, search, filter, includeArchived = fal
       if (filter === 'All') return true
       if (filter === 'Forex') return c.product === 'Forex / Dollar'
       if (filter === 'Others') return c.product === 'Other Investments'
+      if (filter === 'Cibil') return c.product === 'Cibil'
       return c.product === filter
     })
     .filter((c) => !q || [c.name, c.phone, c.email, c.pan].some((value) => String(value || '').toLocaleLowerCase('en-IN').includes(q)))
@@ -68,7 +82,13 @@ export function rowsToCsv(customers) {
     'Email Id': c.email,
     'Pan Card No': c.pan,
     'Trading Code': c.tradingCode,
+    Aadhaar: c.aadhaar,
+    Address: c.address,
+    Pincode: c.pincode,
+    'Voter ID No': c.voterId,
+    'Ration Card No': c.rationCardNo,
     Product: c.product,
+    'Cibil Type': c.cibilType,
     'Ref by': c.referredBy,
     DOB: dobToIso(c.dob),
     Status: c.archived ? 'Archived' : 'Active',
@@ -82,7 +102,13 @@ export function csvRowToCustomer(row) {
     email: row['Email Id'] || row.email,
     pan: row['Pan Card No'] || row.pan,
     tradingCode: row['Trading Code'] || row.tradingCode,
+    aadhaar: row.Aadhaar || row.Aadhar || row.aadhaar || row.aadhar,
+    address: row.Address || row.address,
+    pincode: row.Pincode || row['Pin Code'] || row.pincode,
+    voterId: row['Voter ID No'] || row['Voter Id No'] || row.voterId,
+    rationCardNo: row['Ration Card No'] || row.rationCardNo,
     product: row.Product || row.product,
+    cibilType: row['Cibil Type'] || row['CIBIL Type'] || row.cibilType,
     referredBy: row['Ref by'] || row['Referred by'] || row.referredBy,
     dob: row.DOB || row.dob,
   })

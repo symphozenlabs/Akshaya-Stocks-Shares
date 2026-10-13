@@ -9,8 +9,10 @@ service cloud.firestore {
     //   phone: string (required, international/local digits)
     //   email: string (optional represented as empty string, max 254)
     //   pan: string (required for Shares and Mutual Funds, otherwise optional)
+    //   aadhaar, address, pincode, voterId, rationCardNo: string (required for new records)
     //   tradingCode, referredBy: string (optional, bounded)
     //   product: enum string (required)
+    //   cibilType: enum string (required only when product is Cibil)
     //   dob: timestamp (required)
     //   archived: bool, archivedAt: timestamp|null
     //   createdAt, updatedAt: timestamp
@@ -38,15 +40,44 @@ service cloud.firestore {
         && (
           ((data.product == 'Shares' || data.product == 'Mutual Funds')
             && data.pan.matches('^[A-Z]{5}[0-9]{4}[A-Z]$'))
-          || ((data.product == 'Forex / Dollar' || data.product == 'Other Investments')
+          || ((data.product == 'Forex / Dollar' || data.product == 'Other Investments' || data.product == 'Cibil')
             && (data.pan == '' || data.pan.matches('^[A-Z]{5}[0-9]{4}[A-Z]$')))
         );
+    }
+
+    function hasExtendedCustomerFields(data) {
+      return data.keys().hasAll([
+        'aadhaar', 'address', 'pincode', 'voterId', 'rationCardNo', 'cibilType'
+      ]);
+    }
+
+    function hasAnyExtendedCustomerField(data) {
+      return data.keys().hasAny([
+        'aadhaar', 'address', 'pincode', 'voterId', 'rationCardNo', 'cibilType'
+      ]);
+    }
+
+    function validExtendedCustomer(data) {
+      return data.aadhaar is string && data.aadhaar.matches('^[0-9]{12}$')
+        && data.address is string && data.address.size() >= 5 && data.address.size() <= 500
+        && data.pincode is string && data.pincode.matches('^[1-9][0-9]{5}$')
+        && data.voterId is string && data.voterId.matches('^[A-Z0-9/-]{6,20}$')
+        && data.rationCardNo is string && data.rationCardNo.matches('^[A-Z0-9 /-]{3,30}$')
+        && data.cibilType is string
+        && ((data.product == 'Cibil' && data.cibilType in ['Cibil', 'CRIF', 'Experian', 'Equifax'])
+          || (data.product != 'Cibil' && data.cibilType == ''));
+    }
+
+    function validExtendedCustomerUpdate(data, existing) {
+      return (hasExtendedCustomerFields(data) && validExtendedCustomer(data))
+        || (!hasAnyExtendedCustomerField(existing) && !hasAnyExtendedCustomerField(data));
     }
 
     function validCustomer(data) {
       return data.keys().hasOnly([
           'name', 'nameLower', 'phone', 'email', 'pan', 'tradingCode',
-          'referredBy', 'product', 'dob', 'archived', 'archivedAt',
+          'referredBy', 'aadhaar', 'address', 'pincode', 'voterId',
+          'rationCardNo', 'product', 'cibilType', 'dob', 'archived', 'archivedAt',
           'createdAt', 'createdBy', 'updatedAt', 'updatedBy'
         ])
         && data.keys().hasAll([
@@ -61,7 +92,7 @@ service cloud.firestore {
         && validPan(data)
         && data.tradingCode is string && data.tradingCode.size() <= 60
         && data.referredBy is string && data.referredBy.size() <= 120
-        && data.product in ['Shares', 'Mutual Funds', 'Forex / Dollar', 'Other Investments']
+        && data.product in ['Shares', 'Mutual Funds', 'Forex / Dollar', 'Other Investments', 'Cibil']
         && data.dob is timestamp && data.dob < request.time
         && data.archived is bool
         && ((!data.archived && data.archivedAt == null)
@@ -88,6 +119,8 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow create: if isAdmin()
         && validCustomer(request.resource.data)
+        && hasExtendedCustomerFields(request.resource.data)
+        && validExtendedCustomer(request.resource.data)
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.updatedBy == request.auth.uid
         && request.resource.data.archived == false
@@ -96,6 +129,7 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
       allow update: if isAdmin()
         && validCustomer(request.resource.data)
+        && validExtendedCustomerUpdate(request.resource.data, resource.data)
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedBy == request.auth.uid
