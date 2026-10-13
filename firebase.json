@@ -20,7 +20,7 @@
     "trailingSlash": false
   },
   "auth": {
-    "authorizedDomains": ["localhost", "akshayass-crm.firebaseapp.com", "akshayass-crm.web.app", "akshaya-stocks-shares.vercel.app"],
+    "authorizedDomains": ["localhost", "akshayass-crm.firebaseapp.com", "akshayass-crm.web.app", "akshaya-stocks-shares.vercel.app", "akshaya-ss.vercel.app"],
     "providers": {
       "anonymous": false,
       "emailPassword": true
