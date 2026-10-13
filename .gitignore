@@ -6,3 +6,4 @@ firebase-debug.log*
 *.local
 .DS_Store
 firestore-analysis.md
+.vercel

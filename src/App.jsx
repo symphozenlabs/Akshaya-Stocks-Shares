@@ -9,8 +9,9 @@ import {
 } from 'lucide-react'
 import Papa from 'papaparse'
 import {
-  EmailAuthProvider, onAuthStateChanged, reauthenticateWithCredential, sendEmailVerification,
-  sendPasswordResetEmail, signInWithEmailAndPassword, signOut, updatePassword,
+  applyActionCode, EmailAuthProvider, onAuthStateChanged, reauthenticateWithCredential,
+  sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword, signOut,
+  updatePassword, verifyPasswordResetCode, confirmPasswordReset,
 } from 'firebase/auth'
 import {
   addDoc, collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, Timestamp, updateDoc,
@@ -197,6 +198,47 @@ function ContactPage() {
   )
 }
 
+function AuthActionPage() {
+  const location = useLocation()
+  const params = useMemo(() => new URLSearchParams(location.search), [location.search])
+  const mode = params.get('mode')
+  const code = params.get('oobCode')
+  const [state, setState] = useState({ status: 'working', email: '', message: 'Securely validating your request…' })
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+
+  useEffect(() => {
+    if (!code) { setState({ status: 'error', email: '', message: 'This link is incomplete. Please request a new email.' }); return }
+    if (mode === 'verifyEmail' || mode === 'recoverEmail') {
+      applyActionCode(auth, code)
+        .then(() => setState({ status: 'success', email: '', message: mode === 'verifyEmail' ? 'Your administrator email is verified.' : 'Your email address has been restored.' }))
+        .catch(() => setState({ status: 'error', email: '', message: 'This link is invalid or has expired. Please request a new email.' }))
+      return
+    }
+    if (mode === 'resetPassword') {
+      verifyPasswordResetCode(auth, code)
+        .then((email) => setState({ status: 'reset', email, message: 'Create a new secure password.' }))
+        .catch(() => setState({ status: 'error', email: '', message: 'This password-reset link is invalid or has expired.' }))
+      return
+    }
+    setState({ status: 'error', email: '', message: 'This email action is not supported.' })
+  }, [code, mode])
+
+  const resetPassword = async (event) => {
+    event.preventDefault()
+    if (password.length < 8) { setState((current) => ({ ...current, message: 'Use at least 8 characters.' })); return }
+    if (password !== confirm) { setState((current) => ({ ...current, message: 'The passwords do not match.' })); return }
+    try {
+      await confirmPasswordReset(auth, code, password)
+      setState({ status: 'success', email: '', message: 'Your password has been changed successfully.' })
+    } catch {
+      setState({ status: 'error', email: '', message: 'This password-reset link is invalid or has expired.' })
+    }
+  }
+
+  return <div className="verify-page auth-action-page"><Logo/><span className="modal-icon">{state.status==='success'?<Check/>:<ShieldCheck/>}</span><span className="eyebrow">Secure account action</span><h1>{state.status==='working'?'One moment…':state.status==='reset'?'Reset your password':state.status==='success'?'All set':'We could not complete that'}</h1><p>{state.message}</p>{state.status==='reset'&&<form className="action-password-form" onSubmit={resetPassword}><label>Account<input value={state.email} disabled/></label><label>New password<input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} required autoComplete="new-password"/></label><label>Confirm password<input type="password" value={confirm} onChange={(e)=>setConfirm(e.target.value)} required autoComplete="new-password"/></label><button className="button button-gold full">Save new password</button></form>}{state.status==='success'&&<Link className="button button-gold" to="/login">Continue to CRM login</Link>}{state.status==='error'&&<Link className="button button-ghost" to="/login">Return to login</Link>}</div>
+}
+
 function LoginPage({ user }) {
   const nav = useNavigate()
   const [email, setEmail] = useState(ADMIN_EMAIL)
@@ -317,5 +359,5 @@ export default function App() {
   const [user,setUser]=useState(null);const [authLoading,setAuthLoading]=useState(true);const [customers,setCustomers]=useState([]);const [profile,setProfile]=useState(null)
   useEffect(()=>onAuthStateChanged(auth,async(next)=>{setUser(next);setAuthLoading(false);if(next){const ref=doc(db,'users',next.uid);const snap=await getDoc(ref).catch(()=>null);if(snap?.exists())setProfile(snap.data());else if(next.emailVerified){const initial={mustChangePassword:true,changeDeferred:false,onboardingCreatedAt:serverTimestamp(),lastUpdatedAt:serverTimestamp()};await setDoc(ref,initial);setProfile(initial)}}else{setCustomers([]);setProfile(null)}}),[])
   useEffect(()=>{if(!user?.emailVerified)return;return onSnapshot(collection(db,'customers'),snap=>setCustomers(snap.docs.map(d=>({id:d.id,...d.data()}))),()=>setCustomers([]))},[user])
-  return <Routes><Route path="/" element={<HomePage/>}/><Route path="/about" element={<ContentPage type="about"/>}/><Route path="/services" element={<ContentPage type="services"/>}/><Route path="/contact" element={<ContactPage/>}/><Route path="/login" element={<LoginPage user={user}/>}/><Route element={<AuthGate user={user} loading={authLoading}/>}>{user&&!user.emailVerified?<Route path="/app/*" element={<VerifyEmail user={user}/>}/>:<Route path="/app" element={<><AppShell user={user} customers={customers} profile={profile} setProfile={setProfile}/><FirstLoginPrompt user={user} profile={profile} setProfile={setProfile}/></>}><Route index element={<DashboardPage/>}/><Route path="customers" element={<CustomersPage/>}/><Route path="customers/new" element={<CustomerFormPage/>}/><Route path="customers/:id/edit" element={<CustomerFormPage/>}/><Route path="import" element={<ImportExportPage/>}/><Route path="archive" element={<CustomersPage archived/>}/><Route path="settings" element={<SettingsPage/>}/></Route>}</Route><Route path="*" element={<Navigate to="/" replace/>}/></Routes>
+  return <Routes><Route path="/" element={<HomePage/>}/><Route path="/about" element={<ContentPage type="about"/>}/><Route path="/services" element={<ContentPage type="services"/>}/><Route path="/contact" element={<ContactPage/>}/><Route path="/auth/action" element={<AuthActionPage/>}/><Route path="/login" element={<LoginPage user={user}/>}/><Route element={<AuthGate user={user} loading={authLoading}/>}>{user&&!user.emailVerified?<Route path="/app/*" element={<VerifyEmail user={user}/>}/>:<Route path="/app" element={<><AppShell user={user} customers={customers} profile={profile} setProfile={setProfile}/><FirstLoginPrompt user={user} profile={profile} setProfile={setProfile}/></>}><Route index element={<DashboardPage/>}/><Route path="customers" element={<CustomersPage/>}/><Route path="customers/new" element={<CustomerFormPage/>}/><Route path="customers/:id/edit" element={<CustomerFormPage/>}/><Route path="import" element={<ImportExportPage/>}/><Route path="archive" element={<CustomersPage archived/>}/><Route path="settings" element={<SettingsPage/>}/></Route>}</Route><Route path="*" element={<Navigate to="/" replace/>}/></Routes>
 }
