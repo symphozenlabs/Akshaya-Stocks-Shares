@@ -260,7 +260,7 @@ function AuthActionPage() {
 
 function LoginPage({ user }) {
   const nav = useNavigate()
-  const [email, setEmail] = useState(ADMIN_EMAIL)
+  const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
