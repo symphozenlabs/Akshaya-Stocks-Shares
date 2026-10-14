@@ -10,6 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "ag-grid-community": "^36.2.0",
+    "ag-grid-react": "^36.2.0",
     "firebase": "^12.4.0",
     "lucide-react": "^0.468.0",
     "papaparse": "^5.5.3",
