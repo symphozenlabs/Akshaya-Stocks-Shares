@@ -13,6 +13,7 @@
     "ag-grid-community": "^36.2.0",
     "ag-grid-react": "^36.2.0",
     "firebase": "^12.4.0",
+    "firebase-admin": "^14.5.0",
     "lucide-react": "^0.468.0",
     "papaparse": "^5.5.3",
     "react": "^19.2.0",
