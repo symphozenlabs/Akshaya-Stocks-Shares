@@ -1,5 +1,14 @@
 export const PRODUCTS = ['Shares', 'Mutual Funds', 'Forex / Dollar', 'Other Investments', 'Cibil']
 export const CIBIL_TYPES = ['Cibil', 'CRIF', 'Experian', 'Equifax']
+export const TEAM_EMAIL_DOMAIN = 'team.akshaya-ss.app'
+
+export function normalizeUsername(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+export function teamEmailForUsername(value) {
+  return `${normalizeUsername(value)}@${TEAM_EMAIL_DOMAIN}`
+}
 
 export function dobToIso(value) {
   if (!value) return ''
@@ -39,11 +48,11 @@ export function validateCustomer(input) {
   if (c.name.length < 2) errors.name = 'Enter the customer’s full name.'
   if (!/^\+?[0-9]{7,15}$/.test(c.phone)) errors.phone = 'Enter a valid phone number.'
   if (c.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) errors.email = 'Enter a valid email address.'
-  if (!/^\d{12}$/.test(c.aadhaar)) errors.aadhaar = 'Enter a valid 12-digit Aadhaar number.'
-  if (c.address.length < 5) errors.address = 'Enter the customer’s complete address.'
-  if (!/^[1-9][0-9]{5}$/.test(c.pincode)) errors.pincode = 'Enter a valid 6-digit Indian pincode.'
-  if (!/^[A-Z0-9/-]{6,20}$/.test(c.voterId)) errors.voterId = 'Enter a valid voter ID number.'
-  if (!/^[A-Z0-9 /-]{3,30}$/.test(c.rationCardNo)) errors.rationCardNo = 'Enter a valid ration card number.'
+  if (c.aadhaar && !/^\d{12}$/.test(c.aadhaar)) errors.aadhaar = 'Use a valid 12-digit Aadhaar number.'
+  if (c.address && c.address.length < 5) errors.address = 'Enter a complete address or leave it blank.'
+  if (c.pincode && !/^[1-9][0-9]{5}$/.test(c.pincode)) errors.pincode = 'Use a valid 6-digit Indian pincode.'
+  if (c.voterId && !/^[A-Z0-9/-]{6,20}$/.test(c.voterId)) errors.voterId = 'Use a valid voter ID number.'
+  if (c.rationCardNo && !/^[A-Z0-9 /-]{3,30}$/.test(c.rationCardNo)) errors.rationCardNo = 'Use a valid ration card number.'
   if (!PRODUCTS.includes(c.product)) errors.product = 'Select an investment product.'
   if (c.product === 'Cibil' && !CIBIL_TYPES.includes(c.cibilType)) errors.cibilType = 'Select a CIBIL type.'
   if (!/^\d{4}-\d{2}-\d{2}$/.test(c.dob)) errors.dob = 'Date of birth is required.'

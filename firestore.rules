@@ -9,7 +9,7 @@ service cloud.firestore {
     //   phone: string (required, international/local digits)
     //   email: string (optional represented as empty string, max 254)
     //   pan: string (required for Shares and Mutual Funds, otherwise optional)
-    //   aadhaar, address, pincode, voterId, rationCardNo: string (required for new records)
+    //   aadhaar, address, pincode, voterId, rationCardNo: optional strings (empty when omitted)
     //   tradingCode, referredBy: string (optional, bounded)
     //   product: enum string (required)
     //   cibilType: enum string (required only when product is Cibil)
@@ -20,12 +20,42 @@ service cloud.firestore {
     // users/{uid}
     //   mustChangePassword, changeDeferred: bool
     //   onboardingCreatedAt, lastUpdatedAt: timestamp
+    // teamMembers/{uid}
+    //   username, authEmail, role: string; active: bool
+    //   createdAt, updatedAt: timestamp; createdBy, updatedBy: administrator UID
     // ===============================================================
 
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function uidUnchanged(data) {
+      return !data.keys().hasAny(['uid']);
+    }
+
+    function uidNotModified(data, existing) {
+      return !data.diff(existing).affectedKeys().hasAny(['uid']);
+    }
+
     function isAdmin() {
-      return request.auth != null
+      return isAuthenticated()
         && request.auth.token.email == 'akshayastocksshares@gmail.com'
         && request.auth.token.email_verified == true;
+    }
+
+    function isActiveTeamMember() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/teamMembers/$(request.auth.uid))
+        && get(/databases/$(database)/documents/teamMembers/$(request.auth.uid)).data.role == 'staff'
+        && get(/databases/$(database)/documents/teamMembers/$(request.auth.uid)).data.active == true;
+    }
+
+    function canUseCrm() {
+      return isAdmin() || isActiveTeamMember();
     }
 
     function validEmail(value) {
@@ -58,11 +88,16 @@ service cloud.firestore {
     }
 
     function validExtendedCustomer(data) {
-      return data.aadhaar is string && data.aadhaar.matches('^[0-9]{12}$')
-        && data.address is string && data.address.size() >= 5 && data.address.size() <= 500
-        && data.pincode is string && data.pincode.matches('^[1-9][0-9]{5}$')
-        && data.voterId is string && data.voterId.matches('^[A-Z0-9/-]{6,20}$')
-        && data.rationCardNo is string && data.rationCardNo.matches('^[A-Z0-9 /-]{3,30}$')
+      return data.aadhaar is string && data.aadhaar.size() <= 12
+        && (data.aadhaar == '' || data.aadhaar.matches('^[0-9]{12}$'))
+        && data.address is string && data.address.size() <= 500
+        && (data.address == '' || data.address.size() >= 5)
+        && data.pincode is string && data.pincode.size() <= 6
+        && (data.pincode == '' || data.pincode.matches('^[1-9][0-9]{5}$'))
+        && data.voterId is string && data.voterId.size() <= 20
+        && (data.voterId == '' || data.voterId.matches('^[A-Z0-9/-]{6,20}$'))
+        && data.rationCardNo is string && data.rationCardNo.size() <= 30
+        && (data.rationCardNo == '' || data.rationCardNo.matches('^[A-Z0-9 /-]{3,30}$'))
         && data.cibilType is string
         && ((data.product == 'Cibil' && data.cibilType in ['Cibil', 'CRIF', 'Experian', 'Equifax'])
           || (data.product != 'Cibil' && data.cibilType == ''));
@@ -71,6 +106,12 @@ service cloud.firestore {
     function validExtendedCustomerUpdate(data, existing) {
       return (hasExtendedCustomerFields(data) && validExtendedCustomer(data))
         || (!hasAnyExtendedCustomerField(existing) && !hasAnyExtendedCustomerField(data));
+    }
+
+    function validArchiveUpdate(data, existing) {
+      return (data.archived == existing.archived && data.archivedAt == existing.archivedAt)
+        || (!existing.archived && data.archived && data.archivedAt == request.time)
+        || (existing.archived && !data.archived && data.archivedAt == null);
     }
 
     function validCustomer(data) {
@@ -115,9 +156,32 @@ service cloud.firestore {
         && data.lastUpdatedAt is timestamp;
     }
 
+    function validTeamMember(data) {
+      return data.keys().hasOnly([
+          'username', 'authEmail', 'role', 'active', 'createdAt', 'createdBy',
+          'updatedAt', 'updatedBy'
+        ])
+        && data.keys().hasAll([
+          'username', 'authEmail', 'role', 'active', 'createdAt', 'createdBy',
+          'updatedAt', 'updatedBy'
+        ])
+        && data.username is string
+        && data.username.matches('^[a-z0-9._-]{3,30}$')
+        && data.authEmail is string
+        && data.authEmail.size() <= 55
+        && data.authEmail.matches('^[a-z0-9._-]{3,30}@team\\.akshaya-ss\\.app$')
+        && data.role == 'staff'
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && data.createdBy is string && data.createdBy.size() <= 128
+        && data.updatedBy is string && data.updatedBy.size() <= 128;
+    }
+
     match /customers/{customerId} {
-      allow read: if isAdmin();
-      allow create: if isAdmin()
+      allow read: if canUseCrm();
+      allow create: if canUseCrm()
+        && uidUnchanged(request.resource.data)
         && validCustomer(request.resource.data)
         && hasExtendedCustomerFields(request.resource.data)
         && validExtendedCustomer(request.resource.data)
@@ -127,9 +191,11 @@ service cloud.firestore {
         && request.resource.data.archivedAt == null
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
-      allow update: if isAdmin()
+      allow update: if canUseCrm()
+        && uidNotModified(request.resource.data, resource.data)
         && validCustomer(request.resource.data)
         && validExtendedCustomerUpdate(request.resource.data, resource.data)
+        && validArchiveUpdate(request.resource.data, resource.data)
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedBy == request.auth.uid
@@ -138,17 +204,45 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if isAdmin() && request.auth.uid == uid;
+      allow read: if isAdmin() && isOwner(uid);
       allow create: if isAdmin()
-        && request.auth.uid == uid
+        && isOwner(uid)
+        && uidUnchanged(request.resource.data)
         && validUserPreferences(request.resource.data)
         && request.resource.data.onboardingCreatedAt == request.time
         && request.resource.data.lastUpdatedAt == request.time;
       allow update: if isAdmin()
-        && request.auth.uid == uid
+        && isOwner(uid)
+        && uidNotModified(request.resource.data, resource.data)
         && validUserPreferences(request.resource.data)
         && request.resource.data.onboardingCreatedAt == resource.data.onboardingCreatedAt
         && request.resource.data.lastUpdatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /teamMembers/{uid} {
+      allow read: if isAdmin() || isOwner(uid);
+      allow create: if isAdmin()
+        && uidUnchanged(request.resource.data)
+        && validTeamMember(request.resource.data)
+        && request.resource.data.active == true
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if isAdmin()
+        && uidNotModified(request.resource.data, resource.data)
+        && validTeamMember(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'active', 'updatedAt', 'updatedBy'
+        ])
+        && request.resource.data.username == resource.data.username
+        && request.resource.data.authEmail == resource.data.authEmail
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
       allow delete: if false;
     }
 
