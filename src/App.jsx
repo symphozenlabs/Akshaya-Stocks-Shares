@@ -18,6 +18,7 @@ import {
   addDoc, collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, Timestamp, updateDoc, writeBatch,
 } from 'firebase/firestore'
 import { auth, db, getTeamCreatorAuth } from './firebase'
+import useIdleLogout from './useIdleLogout'
 import { CIBIL_TYPES, csvRowToCustomer, dobToIso, filterCustomers, normalizeUsername, PRODUCTS, rowsToCsv, teamEmailForUsername, todaysBirthdays, validateCustomer } from './lib'
 
 const CustomerGrid = lazy(()=>import('./CustomerGrid'))
@@ -285,7 +286,8 @@ function LoginPage({ user }) {
       if (resetMode) { await sendPasswordResetEmail(auth, email); setMessage('Password reset email sent. Please check your inbox.'); setResetMode(false) }
       else {
         const identity = loginMode === 'admin' ? email : teamEmailForUsername(username)
-        await signInWithEmailAndPassword(auth, identity, password)
+        const credential=await signInWithEmailAndPassword(auth, identity, password)
+        localStorage.setItem('akshaya-last-activity-'+credential.user.uid,String(Date.now()))
       }
     } catch (error) { setMessage(error.code === 'auth/invalid-credential' ? `The ${loginMode === 'admin' ? 'email' : 'username'} or password is incorrect.` : error.message.replace('Firebase: ', '')) }
     finally { setBusy(false) }
@@ -494,6 +496,7 @@ function VerifyEmail({user}) {
 
 export default function App() {
   const [user,setUser]=useState(null);const [authLoading,setAuthLoading]=useState(true);const [customers,setCustomers]=useState([]);const [profile,setProfile]=useState(null)
+  useIdleLogout(user)
   useEffect(()=>onAuthStateChanged(auth,next=>{setUser(next);setProfile(null);setCustomers([]);setAuthLoading(Boolean(next))}),[])
   useEffect(()=>{
     if(!user){setAuthLoading(false);return}
