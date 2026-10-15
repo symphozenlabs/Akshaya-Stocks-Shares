@@ -89,3 +89,4 @@ button:disabled{opacity:.55;cursor:wait}
 @media(max-width:760px){.customer-label-print .print-preview>.label-print-page{zoom:.42}}
 @media(max-width:360px){.customer-label-print .print-preview>.label-print-page{zoom:.36}}
 @media print{@page{size:A4 portrait;margin:0}.customer-label-print .print-preview>.label-print-page{width:210mm;height:297mm;min-height:297mm;zoom:1!important}}
+.customer-label-print .print-label-row{gap:5mm}.customer-label-print .print-customer-label{border:1px solid #68756f;align-self:start}.customer-label-print .print-customer-label p{display:grid;grid-template-columns:28mm minmax(0,1fr);font-size:10pt;line-height:1.45;border-bottom:1px solid #cbd3cf}.customer-label-print .print-customer-label p:last-child{border-bottom:0}.customer-label-print .print-customer-label p>span{padding:2mm;min-width:0;overflow-wrap:anywhere}.customer-label-print .print-customer-label p>span:first-child{border-right:1px solid #cbd3cf;font-weight:600}
