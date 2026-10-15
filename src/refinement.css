@@ -84,3 +84,8 @@ button:disabled{opacity:.55;cursor:wait}
 @media(max-width:760px){.customer-label-print .print-preview>.label-print-page{zoom:.3}}
 @media(max-width:360px){.customer-label-print .print-preview>.label-print-page{zoom:.26}}
 @media print{.customer-label-print .print-preview>.label-print-page{zoom:1!important}.customer-label-print .print-preview{padding:0;overflow:visible}}
+.customer-label-print .label-print-page{width:210mm;height:297mm;min-height:297mm}.customer-label-print .label-print-page footer{text-align:right;border:0}.select-all-fields{font-weight:700;width:100%;grid-column:1/-1;padding-bottom:10px;border-bottom:1px solid var(--line)}
+@media(max-width:1200px){.customer-label-print .print-preview>.label-print-page{zoom:.85}}
+@media(max-width:760px){.customer-label-print .print-preview>.label-print-page{zoom:.42}}
+@media(max-width:360px){.customer-label-print .print-preview>.label-print-page{zoom:.36}}
+@media print{@page{size:A4 portrait;margin:0}.customer-label-print .print-preview>.label-print-page{width:210mm;height:297mm;min-height:297mm;zoom:1!important}}

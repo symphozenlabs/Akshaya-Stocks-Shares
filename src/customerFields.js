@@ -15,7 +15,7 @@ export function customerFieldValue(customer,key){
   return String(customer[key]||'—')
 }
 export function readFieldPreference(key,fallback){
-  try{const stored=JSON.parse(localStorage.getItem(key));const valid=Array.isArray(stored)?stored.filter(field=>CUSTOMER_FIELDS.some(item=>item.key===field)):[];return valid.length?[...new Set(valid)]:fallback}catch{return fallback}
+  try{const stored=JSON.parse(localStorage.getItem(key));const valid=Array.isArray(stored)?stored.filter(field=>CUSTOMER_FIELDS.some(item=>item.key===field)):[];return valid.length||Array.isArray(stored)&&stored.length===0?[...new Set(valid)]:fallback}catch{return fallback}
 }
 export function paginateLabelRows(rows,capacity){
   const pages=[];let page=[],used=0
