@@ -9,7 +9,7 @@ export const CUSTOMER_FIELDS=[
   {key:'voterId',label:'Voter ID'},{key:'rationCardNo',label:'Ration card No.'}
 ]
 export const DEFAULT_VISIBLE_FIELDS=['name','phone','email','pan','product','referredBy']
-export const DEFAULT_PRINT_FIELDS=['name','address','phone']
+export const DEFAULT_PRINT_FIELDS=['name','address','phone','pincode']
 export function customerFieldValue(customer,key){
   if(key==='dob')return dobToIso(customer.dob)||'—'
   return String(customer[key]||'—')
