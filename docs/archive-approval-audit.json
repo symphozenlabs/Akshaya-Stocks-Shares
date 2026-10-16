@@ -1,0 +1,5 @@
+{
+  "score": 4,
+  "summary": "Archive transitions and review decisions are administrator-only. Strict request validators protect identity, schema, timestamps and immutable fields. Approval checks archived customer state with getAfter; request and customer are updated atomically by the application. Physical deletion remains denied. Test results are recorded separately; this review is not a formal security certification.",
+  "findings": [{"check":"Storage abuse", "severity":"minor", "issue":"A malicious active staff account can submit duplicate bounded archive request documents via direct API calls; normal UI suppresses own pending duplicates.", "recommendation":"Add rate-limited server submission or a transactional pending-request uniqueness index if request spam becomes a concern."}]
+}

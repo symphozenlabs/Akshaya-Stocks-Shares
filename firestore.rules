@@ -23,6 +23,9 @@ service cloud.firestore {
     // teamMembers/{uid}
     //   username, authEmail, role: string; active: bool
     //   createdAt, updatedAt: timestamp; createdBy, updatedBy: administrator UID
+    // archiveRequests/{requestId}: customerId (string 1..128), requestedBy (UID),
+    // requestedByName (username 3..30), requestedAt (timestamp), status (enum),
+    // reviewedBy (UID|null), reviewedAt (timestamp|null). Origin fields immutable.
     // ===============================================================
 
     function isAuthenticated() {
@@ -110,8 +113,39 @@ service cloud.firestore {
 
     function validArchiveUpdate(data, existing) {
       return (data.archived == existing.archived && data.archivedAt == existing.archivedAt)
-        || (!existing.archived && data.archived && data.archivedAt == request.time)
-        || (existing.archived && !data.archived && data.archivedAt == null);
+        || (isAdmin() && ((!existing.archived && data.archived && data.archivedAt == request.time)
+        || (existing.archived && !data.archived && data.archivedAt == null)));
+    }
+
+    function validArchiveRequest(data) {
+      return data.keys().hasOnly(['customerId','requestedBy','requestedByName','requestedAt','status','reviewedBy','reviewedAt'])
+        && data.keys().hasAll(['customerId','requestedBy','requestedByName','requestedAt','status','reviewedBy','reviewedAt'])
+        && data.customerId is string && data.customerId.size() > 0 && data.customerId.size() <= 128
+        && data.customerId.matches('^[^/]+$')
+        && data.requestedBy is string && data.requestedBy.size() > 0 && data.requestedBy.size() <= 128
+        && data.requestedByName is string && data.requestedByName.matches('^[a-z0-9._-]{3,30}$')
+        && data.requestedAt is timestamp
+        && data.status in ['pending','approved','rejected']
+        && ((data.status == 'pending' && data.reviewedBy == null && data.reviewedAt == null)
+          || (data.status != 'pending' && data.reviewedBy is string && data.reviewedBy.size() > 0
+            && data.reviewedBy.size() <= 128 && data.reviewedAt is timestamp));
+    }
+
+    match /archiveRequests/{requestId} {
+      allow read: if isAdmin() || (isActiveTeamMember() && resource.data.requestedBy == request.auth.uid);
+      allow create: if isActiveTeamMember() && validArchiveRequest(request.resource.data)
+        && request.resource.data.requestedBy == request.auth.uid
+        && request.resource.data.requestedByName == get(/databases/$(database)/documents/teamMembers/$(request.auth.uid)).data.username
+        && request.resource.data.status == 'pending' && request.resource.data.requestedAt == request.time
+        && exists(/databases/$(database)/documents/customers/$(request.resource.data.customerId))
+        && get(/databases/$(database)/documents/customers/$(request.resource.data.customerId)).data.archived == false;
+      allow update: if isAdmin() && validArchiveRequest(request.resource.data)
+        && resource.data.status == 'pending' && request.resource.data.status in ['approved','rejected']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','reviewedBy','reviewedAt'])
+        && request.resource.data.reviewedBy == request.auth.uid && request.resource.data.reviewedAt == request.time
+        && (request.resource.data.status == 'rejected'
+          || getAfter(/databases/$(database)/documents/customers/$(resource.data.customerId)).data.archived == true);
+      allow delete: if false;
     }
 
     function validCustomer(data) {

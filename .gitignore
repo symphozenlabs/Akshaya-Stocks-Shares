@@ -3,6 +3,7 @@ dist/
 .vercel/
 .firebase/
 firebase-debug.log*
+firestore-debug.log*
 *.local
 .DS_Store
 firestore-analysis.md

@@ -11,7 +11,7 @@ const selectionOptions={mode:'multiRow',enableClickSelection:false,selectAll:'fi
 const defaultColumns={sortable:true,resizable:true,filter:'agTextColumnFilter',valueFormatter:({value})=>value||'—'}
 const getRowId=({data})=>data.id
 
-export default function CustomerGrid({rows,selected,onSelection,archived,onRestore,onArchive,onView,visibleFields=DEFAULT_VISIBLE_FIELDS}){
+export default function CustomerGrid({rows,selected,onSelection,archived,onRestore,onArchive,onView,isAdmin=false,visibleFields=DEFAULT_VISIBLE_FIELDS}){
   const ref=useRef(null)
   const syncing=useRef(false)
   const actions=useRef({onRestore,onArchive,onView});actions.current={onRestore,onArchive,onView}
@@ -19,8 +19,8 @@ export default function CustomerGrid({rows,selected,onSelection,archived,onResto
   useEffect(()=>{if(ref.current?.api)sync(ref.current.api)},[selected,rows])
   const columns=useMemo(()=>[
     ...CUSTOMER_FIELDS.map(field=>({field:field.key,headerName:field.label,hide:!visibleFields.includes(field.key),minWidth:field.key==='address'?250:field.key==='name'||field.key==='email'?180:140,flex:1,valueGetter:({data})=>field.key==='product'&&data.product==='Cibil'&&data.cibilType?`${data.product} · ${data.cibilType}`:customerFieldValue(data,field.key),...(field.key==='name'?{sort:'asc',cellRenderer:({value})=><strong>{value}</strong>}:{})})),
-    {headerName:'Actions',colId:'actions',width:144,pinned:'right',sortable:false,filter:false,resizable:false,cellRenderer:({data})=><div className="grid-row-actions"><button className="row-icon" aria-label={`View ${data.name}`} title="View customer" onClick={()=>actions.current.onView(data)}><Eye size={17}/></button>{archived?<button className="row-icon" aria-label={`Restore ${data.name}`} title="Restore customer" onClick={()=>actions.current.onRestore(data)}><RotateCcw size={17}/></button>:<><Link className="row-icon" aria-label={`Edit ${data.name}`} title="Edit customer" to={`/app/customers/${data.id}/edit`}><Edit3 size={17}/></Link><button className="row-icon" aria-label={`Archive ${data.name}`} title="Archive customer" onClick={()=>actions.current.onArchive(data)}><Archive size={17}/></button></>}</div>}
-  ],[archived,visibleFields])
+    {headerName:'Actions',colId:'actions',width:144,pinned:'right',sortable:false,filter:false,resizable:false,cellRenderer:({data})=><div className="grid-row-actions"><button className="row-icon" aria-label={`View ${data.name}`} title="View customer" onClick={()=>actions.current.onView(data)}><Eye size={17}/></button>{archived?isAdmin&&<button className="row-icon" aria-label={`Restore ${data.name}`} title="Restore customer" onClick={()=>actions.current.onRestore(data)}><RotateCcw size={17}/></button>:<><Link className="row-icon" aria-label={`Edit ${data.name}`} title="Edit customer" to={`/app/customers/${data.id}/edit`}><Edit3 size={17}/></Link><button className="row-icon" aria-label={`${isAdmin?'Archive':'Request archive for'} ${data.name}`} title={isAdmin?'Archive customer':'Request archive approval'} onClick={()=>actions.current.onArchive(data)}><Archive size={17}/></button></>}</div>}
+  ],[archived,visibleFields,isAdmin])
   return <div className="ag-customer-grid"><AgGridReact ref={ref} theme={theme} rowData={rows} columnDefs={columns} defaultColDef={defaultColumns} getRowId={getRowId} rowSelection={selectionOptions} selectionColumnDef={{pinned:'left',width:48}} pagination paginationPageSize={20} paginationPageSizeSelector={[20,50,100]} onFirstDataRendered={e=>sync(e.api)} onSelectionChanged={e=>{if(syncing.current)return;const ids=new Set(e.api.getSelectedRows().map(c=>c.id));if(ids.size!==selected.size||[...ids].some(id=>!selected.has(id)))onSelection(ids)}}/></div>
 }
 
