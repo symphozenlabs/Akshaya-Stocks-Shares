@@ -4,6 +4,14 @@ import { csvRowToCustomer, filterCustomers, normalizeCustomer, normalizeUsername
 const valid = { name: 'Anand Kumar', phone: '9150328704', email: '', aadhaar: '123412341234', address: '12 Anna Salai, Salem', pincode: '636004', voterId: 'ABC1234567', rationCardNo: '12G3456789', pan: 'ABCDE1234F', tradingCode: '', referredBy: '', product: 'Shares', cibilType: '', dob: '1990-10-12' }
 
 describe('customer helpers', () => {
+  it('CIC display/export names round-trip to the existing stored product',()=>{
+    const customer={...valid,product:'Cibil',cibilType:'Experian'}
+    const row=rowsToCsv([customer])[0]
+    expect(row.Product).toBe('CIC')
+    expect(csvRowToCustomer(row).product).toBe('Cibil')
+    expect(csvRowToCustomer(row).cibilType).toBe('Experian')
+    expect(filterCustomers([customer],'','CIC')).toHaveLength(1)
+  })
   it('normalizes PAN and names', () => expect(normalizeCustomer({ ...valid, pan: 'abcde1234f' })).toMatchObject({ pan: 'ABCDE1234F', nameLower: 'anand kumar' }))
   it('requires PAN for shares', () => expect(validateCustomer({ ...valid, pan: '' }).errors.pan).toBeTruthy())
   it('allows empty PAN for forex', () => expect(validateCustomer({ ...valid, product: 'Forex / Dollar', pan: '' }).valid).toBe(true))

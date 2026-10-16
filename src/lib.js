@@ -1,5 +1,6 @@
 export const PRODUCTS = ['Shares', 'Mutual Funds', 'Forex / Dollar', 'Other Investments', 'Cibil']
 export const CIBIL_TYPES = ['Cibil', 'CRIF', 'Experian', 'Equifax']
+export const productLabel = value => value === 'Cibil' || value === 'CIC' ? 'CIC' : value
 export const TEAM_EMAIL_DOMAIN = 'team.akshaya-ss.app'
 
 export function normalizeUsername(value) {
@@ -22,7 +23,8 @@ export function dobToIso(value) {
 }
 
 export function normalizeCustomer(input) {
-  const product = String(input.product || '').trim()
+  const inputProduct = String(input.product || '').trim()
+  const product = inputProduct.toUpperCase() === 'CIC' ? 'Cibil' : inputProduct
   return {
     name: String(input.name || '').trim(),
     nameLower: String(input.name || '').trim().toLocaleLowerCase('en-IN'),
@@ -70,7 +72,7 @@ export function filterCustomers(customers, search, filter, includeArchived = fal
       if (filter === 'All') return true
       if (filter === 'Forex') return c.product === 'Forex / Dollar'
       if (filter === 'Others') return c.product === 'Other Investments'
-      if (filter === 'Cibil') return c.product === 'Cibil'
+      if (filter === 'Cibil' || filter === 'CIC') return c.product === 'Cibil' || c.product === 'CIC'
       return c.product === filter
     })
     .filter((c) => !q || [c.name, c.phone, c.email, c.pan].some((value) => String(value || '').toLocaleLowerCase('en-IN').includes(q)))
@@ -96,7 +98,7 @@ export function rowsToCsv(customers) {
     Pincode: c.pincode,
     'Voter ID No': c.voterId,
     'Ration Card No': c.rationCardNo,
-    Product: c.product,
+    Product: productLabel(c.product),
     'Cibil Type': c.cibilType,
     'Ref by': c.referredBy,
     DOB: dobToIso(c.dob),

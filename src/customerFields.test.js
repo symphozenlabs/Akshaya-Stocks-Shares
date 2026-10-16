@@ -6,4 +6,5 @@ describe('customer field and label printing',()=>{
   it('handles no customers',()=>expect(paginateLabelRows([],100)).toEqual([]))
   it('retains an intentionally cleared field selection',()=>{vi.stubGlobal('localStorage',{getItem:()=>JSON.stringify([])});try{expect(readFieldPreference('fields',DEFAULT_PRINT_FIELDS)).toEqual([])}finally{vi.unstubAllGlobals()}})
   it('shows a placeholder for missing optional data',()=>expect(customerFieldValue({},'address')).toBe('—'))
+  it('displays the legacy product as CIC without renaming its bureau type',()=>{expect(customerFieldValue({product:'Cibil'},'product')).toBe('CIC');expect(customerFieldValue({cibilType:'Cibil'},'cibilType')).toBe('Cibil')})
 })

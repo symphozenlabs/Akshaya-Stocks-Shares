@@ -1,4 +1,4 @@
-import {dobToIso} from './lib'
+import {dobToIso,productLabel} from './lib'
 
 export const CUSTOMER_FIELDS=[
   {key:'name',label:'Name'},{key:'address',label:'Address'},{key:'phone',label:'Phone No'},
@@ -12,6 +12,7 @@ export const DEFAULT_VISIBLE_FIELDS=['name','phone','email','pan','product','ref
 export const DEFAULT_PRINT_FIELDS=['name','address','phone','pincode']
 export function customerFieldValue(customer,key){
   if(key==='dob')return dobToIso(customer.dob)||'—'
+  if(key==='product')return productLabel(customer.product)||'—'
   return String(customer[key]||'—')
 }
 export function readFieldPreference(key,fallback){
